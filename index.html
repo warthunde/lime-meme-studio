@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍊 直到大地变成一颗酸橙 — 梗图生成器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    background: linear-gradient(160deg, #FFF8E1 0%, #F3FFE3 55%, #E6F7E0 100%);
+    min-height: 100vh; display: flex; flex-direction: column; color: #2E3A24;
+  }
+  header#toolbar {
+    display: flex; align-items: center; gap: 10px; padding: 12px 20px; flex-wrap: wrap;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(6px);
+    border-bottom: 2px solid #FFD24A; box-shadow: 0 2px 12px rgba(120,90,0,0.08);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; margin-right: 6px; }
+  .brand .logo { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #FFB800; background: #FFF3D6; }
+  .brand .t {
+    font-weight: 900; font-size: 20px; letter-spacing: 1px; white-space: nowrap;
+    background: linear-gradient(90deg, #FF9F1C, #7DDF64); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .brand .sub { font-size: 10px; color: #8A9B7A; letter-spacing: 2px; display: block; margin-top: 1px; }
+  button {
+    background: #fff; color: #4A5C38; border: 2px solid #DCE8CE; padding: 8px 16px; border-radius: 999px;
+    cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 600; transition: all 0.15s;
+  }
+  button:hover { border-color: #FFB800; color: #E08A00; transform: translateY(-1px); }
+  button.primary {
+    background: linear-gradient(135deg, #FFB800, #FF9F1C); color: #fff; border: none;
+    box-shadow: 0 3px 10px rgba(255,159,28,0.35);
+  }
+  button.primary:hover { filter: brightness(1.06); color: #fff; }
+  button.danger:hover { border-color: #ff6b6b; color: #ff6b6b; }
+  #status { margin-left: auto; font-size: 12px; color: #7A8C66; }
+  main#main { flex: 1; display: flex; min-height: 0; }
+  aside#side {
+    width: 302px; min-width: 302px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+    background: rgba(255,255,255,0.55);
+  }
+  .panel { background: #fff; border: 1.5px solid #EAF0DE; border-radius: 16px; padding: 12px; box-shadow: 0 4px 14px rgba(60,80,30,0.06); }
+  .panel h3 { font-size: 13px; font-weight: 800; color: #E08A00; margin-bottom: 10px; letter-spacing: 0.5px; }
+  .panel input[type="text"] {
+    width: 100%; padding: 9px 12px; border-radius: 10px; border: 2px solid #EAF0DE;
+    background: #FFFDF5; color: #2E3A24; font-size: 16px; font-weight: 800; font-family: inherit; outline: none;
+  }
+  .panel input[type="text"]:focus { border-color: #FFB800; }
+  .field { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; color: #5A6C48; }
+  .field label { flex: 0 0 auto; width: 92px; }
+  .field input[type="color"] { width: 40px; height: 26px; border: 2px solid #EAF0DE; border-radius: 8px; background: none; cursor: pointer; padding: 2px; }
+  .field input[type="range"] { flex: 1; accent-color: #FF9F1C; }
+  .field .val { width: 34px; text-align: right; color: #8A9B7A; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .presets button { font-size: 12px; padding: 4px 10px; border-width: 1.5px; }
+  .presets button.on { border-color: #FFB800; background: #FFF3D6; color: #E08A00; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+  .cell { background: #FFFDF7; border: 1.5px solid #EAF0DE; border-radius: 12px; padding: 5px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .cell:hover { border-color: #FFB800; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(255,159,28,0.15); }
+  .cell img { width: 100%; border-radius: 8px; display: block; background: #F6F9EF; }
+  .cell .nm { font-size: 11px; color: #5A6C48; margin-top: 4px; display: block; }
+  .cell .ops { display: flex; gap: 4px; margin-top: 4px; }
+  .cell .ops button { flex: 1; font-size: 11px; padding: 3px 0; border-width: 1.5px; }
+  #layerList { list-style: none; }
+  #layerList li {
+    display: flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 10px;
+    border: 1.5px solid transparent; font-size: 12px; cursor: pointer; margin-bottom: 4px; background: #FFFDF7;
+  }
+  #layerList li:hover { background: #FFF9E8; }
+  #layerList li.sel { border-color: #FFB800; background: #FFF3D6; }
+  #layerList li .tag { font-size: 10px; background: #EAF2DC; color: #4A6B2E; padding: 1px 6px; border-radius: 6px; }
+  #layerList li .del { margin-left: auto; color: #E08A00; border: none; background: none; cursor: pointer; font-size: 14px; padding: 0 4px; }
+  #layerList li .del:hover { color: #ff4d4d; }
+  .row { display: flex; gap: 6px; margin-top: 10px; }
+  .row button { flex: 1; font-size: 12px; }
+  #stage { flex: 1; overflow: auto; position: relative; padding: 0 16px 16px; }
+  #hint { font-size: 12px; color: #8A9B7A; padding: 10px 4px 4px; }
+  #canvasBox {
+    position: relative; margin: 10px auto; background-image:
+      repeating-conic-gradient(#F4F7EC 0% 25%, #EDF2E2 0% 50%);
+    background-size: 22px 22px; border: 2px solid #DCE8CE; border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(60,80,30,0.12); overflow: hidden;
+  }
+  #bg { position: absolute; inset: 0; }
+  #bg img { width: 100%; height: 100%; display: block; }
+  #layers { position: absolute; inset: 0; }
+  .ly { position: absolute; transform: translate(-50%, -50%); cursor: grab; user-select: none; -webkit-user-select: none; }
+  .ly.sel::after {
+    content: ""; position: absolute; inset: -6px; border: 2px dashed #FF9F1C; border-radius: 8px; pointer-events: none;
+  }
+  .ly .txt {
+    font-weight: 900; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    white-space: nowrap; line-height: 1.25; display: block;
+  }
+  #dropHint {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #A9B896; font-size: 15px; pointer-events: none; text-align: center; padding: 20px; line-height: 1.8;
+  }
+  #dropHint b { color: #E08A00; }
+  #overlay {
+    position: fixed; inset: 0; background: rgba(255,248,225,0.82); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 99;
+  }
+  #overlay .box {
+    background: #fff; border: 2px solid #FFD24A; border-radius: 18px; padding: 28px 40px;
+    text-align: center; box-shadow: 0 10px 40px rgba(120,90,0,0.18); min-width: 300px;
+  }
+  #overlay .box .em { font-size: 34px; margin-bottom: 10px; }
+  #bar { width: 260px; height: 12px; background: #F0F5E6; border-radius: 8px; overflow: hidden; margin: 14px auto 6px; }
+  #bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, #FFD24A, #7DDF64); border-radius: 8px; transition: width 0.15s; }
+  #ovNote { font-size: 11px; color: #A9B896; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header id="toolbar">
+  <div class="brand">
+    <img class="logo" id="brandLogo" alt="" src="">
+    <div><span class="t">直到大地变成一颗酸橙</span><span class="sub">LIME MEME STUDIO</span></div>
+  </div>
+  <button id="btnPhoto" class="primary">📷 上传照片</button>
+  <button id="btnAuto">✨ 自动找位置</button>
+  <button id="btnPng">⬇ 导出 PNG</button>
+  <button id="btnGif">⬇ 导出 GIF(动图)</button>
+  <input type="file" id="fileInput" accept="image/*" hidden>
+  <span id="status"></span>
+</header>
+<main id="main">
+  <aside id="side">
+    <section class="panel">
+      <h3>✏️ 标题文字</h3>
+      <input type="text" id="textInput" value="直到大地变成一颗酸橙">
+      <div class="presets" id="presetRow"></div>
+      <div class="field"><label>文字颜色</label><input type="color" id="txtColor" value="#ffffff"><span class="val"></span></div>
+      <div class="field"><label>描边颜色</label><input type="color" id="strokeColor" value="#3E2A00"><span class="val"></span></div>
+      <div class="field"><label>描边粗细 %</label><input type="range" id="strokeWidth" min="2" max="16" value="7" step="0.5"><span class="val" id="vStrokeWidth"></span></div>
+      <div class="field"><label>字号(宽%)</label><input type="range" id="fontSize" min="3" max="22" value="9" step="0.5"><span class="val" id="vFontSize"></span></div>
+      <div class="row"><button id="btnAddText" class="primary">➕ 添加标题文字</button></div>
+    </section>
+    <section class="panel">
+      <h3>🧡 安洁莉娜(点击添加)</h3>
+      <div id="angelinaGrid" class="grid"></div>
+    </section>
+    <section class="panel">
+      <h3>🎨 UI 素材(贴纸)</h3>
+      <div id="uiGrid" class="grid" style="grid-template-columns: repeat(4,1fr);"></div>
+    </section>
+    <section class="panel">
+      <h3>📑 图层</h3>
+      <ul id="layerList"></ul>
+      <div class="row">
+        <button id="btnZUp">⬆ 上移</button>
+        <button id="btnZDown">⬇ 下移</button>
+        <button id="btnDel" class="danger">🗑 删除</button>
+      </div>
+    </section>
+  </aside>
+  <section id="stage">
+    <div id="hint">拖动 = 移动 · 选中后滚轮 = 缩放(文字为字号) · 双击 = 删除</div>
+    <div id="canvasBox">
+      <div id="bg"></div>
+      <div id="layers"></div>
+      <div id="dropHint">把照片拖进来，或点击上方「<b>📷 上传照片</b>」<br>上传后会自动分析照片，把标题放到最合适的空白处</div>
+    </div>
+  </section>
+</main>
+<div id="overlay" hidden>
+  <div class="box">
+    <div class="em">🍊</div>
+    <div id="ovText">处理中…</div>
+    <div id="bar"><div id="barFill"></div></div>
+    <div id="ovNote">大图/多帧动图会稍慢，请稍候</div>
+  </div>
+</div>
+
+<script src="assets-data.js"></script>
+<script src="assets/vendor/gif.js"></script>
+<script src="assets/vendor/gifuct.bundle.js"></script>
+<script>
+"use strict";
+
+/* ================= 状态 ================= */
+var ANGELINA_KEYS = ["zuozuo","paizhao","tanxian","haibian","qianshui","kanshu","zhifeiji","gouwu","songhuo","qixing"];
+var PRESETS = [
+  { name: "方舟白", color: "#FFFFFF", stroke: "#141427", sw: 7 },
+  { name: "柠檬黄", color: "#FFD24A", stroke: "#3E2A00", sw: 7 },
+  { name: "青柠",   color: "#B8F26A", stroke: "#1F3A00", sw: 7 },
+  { name: "天空蓝", color: "#7FD4FF", stroke: "#00243F", sw: 7 },
+  { name: "经典黑", color: "#0E0E18", stroke: "#FFFFFF", sw: 6 },
+  { name: "少女粉", color: "#FFB3C7", stroke: "#5A0F23", sw: 7 }
+];
+var state = { photo: null, layers: [], selectedId: null, dispScale: 1 };
+var layerIdSeq = 1;
+var imgCache = {};
+
+/* ================= 工具 ================= */
+function $(id){ return document.getElementById(id); }
+function fmt(n){ return Math.round(n * 100) / 100; }
+function download(url, filename){
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ a.remove(); }, 3000);
+}
+function showOverlay(t){ $("ovText").textContent = t; $("barFill").style.width = "0%"; $("overlay").hidden = false; }
+function setProgress(p){ $("barFill").style.width = Math.min(100, p) + "%"; }
+function hideOverlay(){ $("overlay").hidden = true; }
+function toast(msg){ var s = $("status"); s.textContent = msg; setTimeout(function(){ if (s.textContent === msg) s.textContent = ""; }, 4500); }
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ================= 素材加载 ================= */
+function preloadAssets(){
+  var list = [];
+  for (var i = 0; i < ANGELINA_KEYS.length; i++){
+    var d = window.ASSET_DATA.angelina[ANGELINA_KEYS[i]];
+    if (d){ list.push(d.gif); list.push(d.png); }
+  }
+  for (var name in window.ASSET_DATA.ui) list.push(window.ASSET_DATA.ui[name]);
+  for (var j = 0; j < list.length; j++){
+    var im = new Image();
+    im.src = list[j];
+    imgCache[list[j]] = im;
+  }
+  // 头部小装饰:用安洁莉娜静态图当 logo
+  var logo = window.ASSET_DATA.angelina["zuozuo"];
+  if (logo) $("brandLogo").src = logo.png;
+}
+
+/* ================= 画布渲染 ================= */
+function dispW(){ return state.photo ? state.photo.w * state.dispScale : 0; }
+function dispH(){ return state.photo ? state.photo.h * state.dispScale : 0; }
+
+function render(){
+  var box = $("canvasBox");
+  if (!state.photo){
+    box.style.width = "640px"; box.style.height = "480px";
+    $("bg").innerHTML = ""; $("layers").innerHTML = "";
+    $("dropHint").style.display = "flex";
+    return;
+  }
+  $("dropHint").style.display = "none";
+  var w = dispW(), h = dispH();
+  box.style.width = w + "px"; box.style.height = h + "px";
+  $("bg").innerHTML = '<img src="' + state.photo.dataURL + '" alt="">';
+  var lc = $("layers");
+  lc.innerHTML = "";
+  for (var i = state.layers.length - 1; i >= 0; i--){
+    var L = state.layers[i];
+    var el = document.createElement("div");
+    el.className = "ly" + (L.id === state.selectedId ? " sel" : "");
+    el.setAttribute("data-lid", L.id);
+    el.style.left = (L.x * w) + "px";
+    el.style.top  = (L.y * h) + "px";
+    el.style.transform = "translate(-50%,-50%) rotate(" + L.rotate + "deg)";
+    if (L.type === "text"){
+      var fs = L.fontSize * w / 100;
+      el.innerHTML = '<span class="txt">' + esc(L.text) + "</span>";
+      el.style.fontSize = fs + "px";
+      el.style.color = L.color;
+      el.style.webkitTextStroke = (fs * L.strokeWidth / 100) + "px " + L.strokeColor;
+    } else {
+      var iw = L.scale * w;
+      el.innerHTML = '<img src="' + L.src + '" style="width:' + iw + "px;display:block;" + '" alt="">';
+    }
+    lc.appendChild(el);
+  }
+  renderLayersList();
+  renderSelectedPanel();
+}
+
+/* ================= 照片 ================= */
+function setPhoto(dataURL){
+  var im = new Image();
+  im.onload = function(){
+    state.photo = { img: im, dataURL: dataURL, w: im.naturalWidth, h: im.naturalHeight };
+    fitCanvas();
+    autoPlace();
+    render();
+    toast("照片已载入，已自动放置标题（可拖动/滚轮缩放调整）");
+  };
+  im.src = dataURL;
+}
+function fitCanvas(){
+  var stage = $("stage");
+  var availW = Math.max(200, (stage.clientWidth || 0) - 40);
+  var availH = Math.max(200, (stage.clientHeight || 0) - 80);
+  var s = Math.min(availW / state.photo.w, availH / state.photo.h, 1);
+  state.dispScale = Math.max(0.05, s);
+}
+
+/* ================= 自动找空白位置 ================= */
+function findBlankSpot(img, W, H){
+  var S = 96;
+  var c = document.createElement("canvas");
+  c.width = S; c.height = S;
+  var ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0, S, S);
+  var data;
+  try { data = ctx.getImageData(0, 0, S, S).data; }
+  catch(e){ return { x: 0.5, y: 0.16 }; }
+  var G = 8, bs = S / G;
+  var cells = [];
+  for (var gy = 0; gy < G; gy++){
+    for (var gx = 0; gx < G; gx++){
+      var sum = 0, sum2 = 0, n = 0;
+      var x0 = Math.floor(gx * bs), x1 = Math.floor((gx + 1) * bs);
+      var y0 = Math.floor(gy * bs), y1 = Math.floor((gy + 1) * bs);
+      for (var y = y0; y < y1; y++){
+        for (var x = x0; x < x1; x++){
+          var i = (y * S + x) * 4;
+          var v = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          sum += v; sum2 += v * v; n++;
+        }
+      }
+      var mean = sum / n;
+      var std = Math.sqrt(Math.max(0, sum2 / n - mean * mean));
+      cells.push({ gx: gx, gy: gy, std: std });
+    }
+  }
+  var cands = cells.filter(function(c){ return c.gy < 4; }).sort(function(a, b){ return a.std - b.std; });
+  var pick = cands[0] || cells.slice().sort(function(a, b){ return a.std - b.std; })[0];
+  var cx = Math.max(0.18, Math.min(0.82, (pick.gx + 0.5) / G));
+  var cy = Math.max(0.1, Math.min(0.6, (pick.gy + 0.5) / G));
+  return { x: cx, y: cy };
+}
+function autoPlace(){
+  if (!state.photo) return;
+  var text = $("textInput").value.trim() || "直到大地变成一颗酸橙";
+  var pos = findBlankSpot(state.photo.img, state.photo.w, state.photo.h);
+  var tl = null;
+  for (var i = 0; i < state.layers.length; i++) if (state.layers[i].type === "text"){ tl = state.layers[i]; break; }
+  if (!tl){
+    tl = newTextLayer(text);
+    state.layers.push(tl);
+  } else {
+    tl.text = text;
+  }
+  tl.x = pos.x; tl.y = pos.y;
+  state.selectedId = tl.id;
+}
+
+/* ================= 图层 ================= */
+function newTextLayer(text){
+  return {
+    id: layerIdSeq++, type: "text", name: "标题",
+    text: text, x: 0.5, y: 0.16,
+    fontSize: parseFloat($("fontSize").value),
+    color: $("txtColor").value, strokeColor: $("strokeColor").value,
+    strokeWidth: parseFloat($("strokeWidth").value), rotate: 0
+  };
+}
+function newImgLayer(src, kind, name){
+  return {
+    id: layerIdSeq++, type: "img", name: name, src: src, kind: kind,
+    x: 0.5, y: 0.55, scale: 0.32, rotate: 0
+  };
+}
+function addTextLayer(){
+  if (!state.photo){ toast("请先上传照片"); return; }
+  var text = $("textInput").value.trim() || "直到大地变成一颗酸橙";
+  var L = newTextLayer(text);
+  state.layers.push(L);
+  state.selectedId = L.id;
+  render();
+}
+function addAngelina(key, mode){
+  if (!state.photo){ toast("请先上传照片"); return; }
+  var d = window.ASSET_DATA.angelina[key];
+  if (!d) return;
+  var src = mode === "png" ? d.png : d.gif;
+  var L = newImgLayer(src, mode === "png" ? "png" : "gif", "安洁莉娜·" + d.name);
+  state.layers.push(L);
+  state.selectedId = L.id;
+  render();
+}
+function addUi(name){
+  if (!state.photo){ toast("请先上传照片"); return; }
+  var src = window.ASSET_DATA.ui[name];
+  if (!src) return;
+  var L = newImgLayer(src, "png", "UI·" + name.replace(".png", ""));
+  L.scale = 0.28;
+  state.layers.push(L);
+  state.selectedId = L.id;
+  render();
+}
+function selectedLayer(){
+  for (var i = 0; i < state.layers.length; i++) if (state.layers[i].id === state.selectedId) return state.layers[i];
+  return null;
+}
+function deleteSelected(){
+  state.layers = state.layers.filter(function(L){ return L.id !== state.selectedId; });
+  state.selectedId = null;
+  render();
+}
+function zMove(dir){
+  var idx = -1;
+  for (var i = 0; i < state.layers.length; i++) if (state.layers[i].id === state.selectedId){ idx = i; break; }
+  if (idx < 0) return;
+  var j = idx + dir;
+  if (j < 0 || j >= state.layers.length) return;
+  var tmp = state.layers[idx]; state.layers[idx] = state.layers[j]; state.layers[j] = tmp;
+  render();
+}
+
+/* ================= 图层面板 / 列表 ================= */
+function renderLayersList(){
+  var ul = $("layerList");
+  ul.innerHTML = "";
+  for (var i = state.layers.length - 1; i >= 0; i--){
+    var L = state.layers[i];
+    (function(L){
+      var li = document.createElement("li");
+      li.className = L.id === state.selectedId ? "sel" : "";
+      var tag = L.type === "text" ? "文字" : (L.kind === "gif" ? "动图" : "贴纸");
+      li.innerHTML = '<span class="tag">' + tag + '</span><span>' + esc(L.name) + '</span><span class="del" title="删除">✕</span>';
+      li.addEventListener("click", function(ev){
+        if (ev.target.classList.contains("del")){
+          state.layers = state.layers.filter(function(x){ return x.id !== L.id; });
+          if (state.selectedId === L.id) state.selectedId = null;
+          render();
+          return;
+        }
+        state.selectedId = L.id;
+        render();
+      });
+      ul.appendChild(li);
+    })(L);
+  }
+}
+function renderSelectedPanel(){
+  var L = selectedLayer();
+  var presets = $("presetRow").querySelectorAll("button");
+  for (var i = 0; i < presets.length; i++) presets[i].classList.remove("on");
+  if (L && L.type === "text"){
+    $("txtColor").value = L.color;
+    $("strokeColor").value = L.strokeColor;
+    $("strokeWidth").value = L.strokeWidth;
+    $("fontSize").value = L.fontSize;
+    $("vStrokeWidth").textContent = L.strokeWidth;
+    $("vFontSize").textContent = L.fontSize;
+  }
+}
+
+/* ================= 素材面板 ================= */
+function buildAssetPanels(){
+  var ag = $("angelinaGrid");
+  ag.innerHTML = "";
+  for (var i = 0; i < ANGELINA_KEYS.length; i++){
+    var k = ANGELINA_KEYS[i];
+    var d = window.ASSET_DATA.angelina[k];
+    if (!d) continue;
+    var cell = document.createElement("div");
+    cell.className = "cell";
+    cell.innerHTML =
+      '<img src="' + d.gif + '" alt="">' +
+      '<span class="nm">' + esc(d.name) + '</span>' +
+      '<div class="ops"><button data-k="' + k + '" data-m="gif">▶ 动图</button><button data-k="' + k + '" data-m="png">▣ 静态</button></div>';
+    ag.appendChild(cell);
+  }
+  ag.addEventListener("click", function(ev){
+    var b = ev.target.closest("button[data-k]");
+    if (!b) return;
+    addAngelina(b.getAttribute("data-k"), b.getAttribute("data-m"));
+  });
+  var ug = $("uiGrid");
+  ug.innerHTML = "";
+  var names = Object.keys(window.ASSET_DATA.ui).sort(function(a, b){ return parseInt(a, 10) - parseInt(b, 10); });
+  for (var j = 0; j < names.length; j++){
+    (function(n){
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      cell.title = n;
+      cell.innerHTML = '<img src="' + window.ASSET_DATA.ui[n] + '" alt=""><span class="nm">' + esc(n.replace(".png", "")) + "</span>";
+      cell.addEventListener("click", function(){ addUi(n); });
+      ug.appendChild(cell);
+    })(names[j]);
+  }
+}
+
+/* ================= 交互 ================= */
+function bindInteractions(){
+  var layersEl = $("layers");
+  var drag = null;
+  layersEl.addEventListener("pointerdown", function(ev){
+    var el = ev.target.closest(".ly");
+    if (!el) return;
+    var id = parseInt(el.getAttribute("data-lid"), 10);
+    var L = null;
+    for (var i = 0; i < state.layers.length; i++) if (state.layers[i].id === id){ L = state.layers[i]; break; }
+    if (!L) return;
+    state.selectedId = id;
+    render();
+    var w = dispW(), h = dispH();
+    drag = { L: L, ox: ev.clientX, oy: ev.clientY, px: L.x * w, py: L.y * h };
+    ev.preventDefault();
+  });
+  layersEl.addEventListener("pointermove", function(ev){
+    if (!drag) return;
+    var w = dispW(), h = dispH();
+    drag.L.x = Math.max(0, Math.min(1, (drag.px + (ev.clientX - drag.ox)) / w));
+    drag.L.y = Math.max(0, Math.min(1, (drag.py + (ev.clientY - drag.oy)) / h));
+    var el = layersEl.querySelector('[data-lid="' + drag.L.id + '"]');
+    if (el){
+      el.style.left = (drag.L.x * w) + "px";
+      el.style.top  = (drag.L.y * h) + "px";
+    }
+  });
+  function endDrag(){ drag = null; }
+  layersEl.addEventListener("pointerup", endDrag);
+  layersEl.addEventListener("pointercancel", endDrag);
+  window.addEventListener("pointerup", endDrag);
+
+  $("canvasBox").addEventListener("wheel", function(ev){
+    var L = selectedLayer();
+    if (!L) return;
+    ev.preventDefault();
+    var dir = ev.deltaY < 0 ? 1.1 : 1 / 1.1;
+    if (L.type === "text"){
+      L.fontSize = Math.max(2, Math.min(40, L.fontSize * dir));
+      $("fontSize").value = L.fontSize;
+      $("vFontSize").textContent = fmt(L.fontSize);
+    } else {
+      L.scale = Math.max(0.02, Math.min(2.5, L.scale * dir));
+    }
+    render();
+  }, { passive: false });
+
+  layersEl.addEventListener("dblclick", function(ev){
+    var el = ev.target.closest(".ly");
+    if (!el) return;
+    var id = parseInt(el.getAttribute("data-lid"), 10);
+    state.layers = state.layers.filter(function(x){ return x.id !== id; });
+    state.selectedId = null;
+    render();
+  });
+}
+
+/* ================= 控件绑定 ================= */
+function bindControls(){
+  $("btnPhoto").addEventListener("click", function(){ $("fileInput").click(); });
+  $("fileInput").addEventListener("change", function(){
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function(){ setPhoto(r.result); };
+    r.readAsDataURL(f);
+    this.value = "";
+  });
+  var stage = $("stage");
+  stage.addEventListener("dragover", function(ev){ ev.preventDefault(); });
+  stage.addEventListener("drop", function(ev){
+    ev.preventDefault();
+    var f = ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (!f || f.type.indexOf("image/") !== 0){ toast("请拖入图片文件"); return; }
+    var r = new FileReader();
+    r.onload = function(){ setPhoto(r.result); };
+    r.readAsDataURL(f);
+  });
+  $("btnAuto").addEventListener("click", function(){ autoPlace(); render(); toast("已根据照片自动放置标题"); });
+  $("btnAddText").addEventListener("click", addTextLayer);
+  $("btnPng").addEventListener("click", exportPNG);
+  $("btnGif").addEventListener("click", exportGIF);
+  $("btnDel").addEventListener("click", deleteSelected);
+  $("btnZUp").addEventListener("click", function(){ zMove(1); });
+  $("btnZDown").addEventListener("click", function(){ zMove(-1); });
+
+  function applyTextProp(L, id, v){
+    if (id === "textInput") L.text = v;
+    else if (id === "txtColor") L.color = v;
+    else if (id === "strokeColor") L.strokeColor = v;
+    else if (id === "strokeWidth") L.strokeWidth = v;
+    else if (id === "fontSize") L.fontSize = v;
+  }
+  function bindLive(id, conv, valId){
+    var el = $(id);
+    el.addEventListener("input", function(){
+      var L = selectedLayer();
+      if (L && L.type === "text"){
+        applyTextProp(L, id, conv(el.value));
+        render();
+      }
+      if (valId) $(valId).textContent = conv(el.value);
+    });
+  }
+  bindLive("textInput", function(v){ return v; }, null);
+  bindLive("txtColor", function(v){ return v; }, null);
+  bindLive("strokeColor", function(v){ return v; }, null);
+  bindLive("strokeWidth", function(v){ return parseFloat(v); }, "vStrokeWidth");
+  bindLive("fontSize", function(v){ return parseFloat(v); }, "vFontSize");
+
+  var pr = $("presetRow");
+  for (var i = 0; i < PRESETS.length; i++){
+    (function(p){
+      var b = document.createElement("button");
+      b.textContent = p.name;
+      b.addEventListener("click", function(){
+        var L = selectedLayer();
+        if (L && L.type === "text"){
+          L.color = p.color; L.strokeColor = p.stroke; L.strokeWidth = p.sw;
+          $("txtColor").value = p.color; $("strokeColor").value = p.stroke;
+          $("strokeWidth").value = p.sw; $("vStrokeWidth").textContent = p.sw;
+          render();
+        } else {
+          toast("请先选中一个标题文字图层");
+        }
+      });
+      pr.appendChild(b);
+    })(PRESETS[i]);
+  }
+  window.addEventListener("resize", function(){ if (state.photo){ fitCanvas(); render(); } });
+}
+
+/* ================= 导出 PNG ================= */
+function exportPNG(){
+  var p = state.photo;
+  if (!p){ toast("请先上传照片"); return; }
+  var W = p.w, H = p.h;
+  var c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  var ctx = c.getContext("2d");
+  ctx.drawImage(p.img, 0, 0, W, H);
+  for (var i = 0; i < state.layers.length; i++) drawLayer(ctx, state.layers[i], W, H);
+  download(c.toDataURL("image/png"), "酸橙梗图.png");
+  toast("PNG 已导出");
+}
+function drawLayer(ctx, L, W, H){
+  if (L.type === "text"){
+    var fs = L.fontSize * W / 100;
+    ctx.save();
+    ctx.translate(L.x * W, L.y * H);
+    ctx.rotate(L.rotate * Math.PI / 180);
+    ctx.font = '900 ' + fs + 'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = fs * L.strokeWidth / 100;
+    ctx.strokeStyle = L.strokeColor;
+    ctx.fillStyle = L.color;
+    ctx.strokeText(L.text, 0, 0);
+    ctx.fillText(L.text, 0, 0);
+    ctx.restore();
+    return;
+  }
+  var img = imgCache[L.src];
+  if (!img) return;
+  var w = L.scale * W;
+  var h = w * img.height / img.width;
+  ctx.save();
+  ctx.translate(L.x * W, L.y * H);
+  ctx.rotate(L.rotate * Math.PI / 180);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+/* ================= 导出 GIF(主线程编码,避免 file:// 下 Worker 失败) ================= */
+function decodeGif(src){
+  return fetch(src).then(function(r){ return r.arrayBuffer(); }).then(function(buf){
+    var g = Gifuct.parseGIF(buf);
+    var frames = Gifuct.decompressFrames(g, true);
+    var totalW = (g.lsd && g.lsd.width) ? g.lsd.width : (frames[0] ? frames[0].dims.width : 1);
+    var totalH = (g.lsd && g.lsd.height) ? g.lsd.height : (frames[0] ? frames[0].dims.height : 1);
+    var totalMs = 0;
+    for (var i = 0; i < frames.length; i++) totalMs += Math.max(40, frames[i].delay || 80);
+    var acc = document.createElement("canvas");
+    acc.width = totalW; acc.height = totalH;
+    return {
+      frames: frames, totalW: totalW, totalH: totalH, totalMs: totalMs,
+      acc: acc, accCtx: acc.getContext("2d")
+    };
+  });
+}
+function gifFrameAt(dec, t){
+  var fs = dec.frames;
+  var acc = 0;
+  for (var i = 0; i < fs.length; i++){
+    var d = Math.max(40, fs[i].delay || 80);
+    if (t < acc + d) return fs[i];
+    acc += d;
+  }
+  return fs[fs.length - 1];
+}
+function drawGifLayer(ctx, L, dec, frame, W, H){
+  var octx = dec.accCtx;
+  if (frame.disposalType === 2) octx.clearRect(0, 0, dec.totalW, dec.totalH);
+  var imd = octx.createImageData(frame.dims.width, frame.dims.height);
+  if (frame.patch && frame.patch.length){
+    var need = frame.dims.width * frame.dims.height * 4;
+    var src = frame.patch.length === need ? frame.patch : frame.patch.subarray(0, Math.min(need, frame.patch.length));
+    imd.data.set(src);
+  }
+  octx.putImageData(imd, frame.dims.left, frame.dims.top);
+  var w = L.scale * W;
+  var h = w * dec.totalH / dec.totalW;
+  ctx.save();
+  ctx.translate(L.x * W, L.y * H);
+  ctx.rotate(L.rotate * Math.PI / 180);
+  ctx.drawImage(dec.acc, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+function exportGIF(){
+  var p = state.photo;
+  if (!p){ toast("请先上传照片"); return; }
+  var gifLayers = state.layers.filter(function(L){ return L.type === "img" && L.kind === "gif"; });
+  if (gifLayers.length === 0){ toast("请先添加一个安洁莉娜动图(GIF)"); return; }
+  showOverlay("正在解析动图帧…");
+  var finished = false;
+  var decs = [];
+  var seq = Promise.resolve();
+  for (var i = 0; i < gifLayers.length; i++){
+    (function(L){
+      seq = seq.then(function(){
+        setProgress(8);
+        return decodeGif(L.src).then(function(dec){ decs.push({ L: L, dec: dec }); });
+      });
+    })(gifLayers[i]);
+  }
+  seq.then(function(){
+    var main = decs[0];
+    for (var i = 1; i < decs.length; i++) if (decs[i].dec.frames.length > main.dec.frames.length) main = decs[i];
+    var N = main.dec.frames.length;
+    var delays = main.dec.frames.map(function(f){ return Math.max(40, f.delay || 80); });
+    var W = p.w, H = p.h;
+    var maxDim = 2200;
+    var sc = Math.min(1, maxDim / W, maxDim / H);
+    var EW = Math.max(64, Math.round(W * sc));
+    var EH = Math.max(64, Math.round(H * sc));
+    var c = document.createElement("canvas");
+    c.width = EW; c.height = EH;
+    var ctx = c.getContext("2d");
+    showOverlay("正在合成动图(共 " + N + " 帧)…");
+    // 主线程编码(workers:0):完全不依赖 Web Worker,file:// 与本地服务器都可靠
+    var gif = new GIF({ workers: 0, quality: 8, width: EW, height: EH, workerScript: "" });
+    gif.on("progress", function(pct){ setProgress(8 + pct * 88); });
+    gif.on("error", function(e){
+      finished = true;
+      hideOverlay();
+      toast("GIF 编码失败: " + (e && e.message ? e.message : e));
+      console.error(e);
+    });
+    var t = 0;
+    for (var i = 0; i < N; i++){
+      t += i === 0 ? 0 : delays[i - 1];
+      ctx.drawImage(p.img, 0, 0, EW, EH);
+      for (var j = 0; j < state.layers.length; j++){
+        var L = state.layers[j];
+        if (L.type === "text"){ drawLayer(ctx, L, EW, EH); }
+        else if (L.kind === "gif"){
+          var d = null;
+          for (var k = 0; k < decs.length; k++) if (decs[k].L.id === L.id){ d = decs[k]; break; }
+          if (d){ var fr = gifFrameAt(d.dec, t % d.dec.totalMs); drawGifLayer(ctx, L, d.dec, fr, EW, EH); }
+        } else {
+          drawLayer(ctx, L, EW, EH);
+        }
+      }
+      gif.addFrame(c, { delay: delays[i], copy: true });
+    }
+    setProgress(96);
+    gif.on("finished", function(blob){
+      finished = true;
+      download(URL.createObjectURL(blob), "酸橙梗图.gif");
+      hideOverlay();
+      toast("GIF 已导出");
+    });
+    gif.render();
+    // 超时保护:60 秒未完成则提示
+    setTimeout(function(){
+      if (!finished){
+        hideOverlay();
+        toast("导出超时(超过 60 秒)，请尝试更小的照片或减少图层");
+      }
+    }, 60000);
+  }).catch(function(err){
+    hideOverlay();
+    toast("导出失败: " + err.message);
+    console.error(err);
+  });
+}
+
+/* ================= 启动 ================= */
+window.addEventListener("DOMContentLoaded", function(){
+  if (!window.ASSET_DATA || !window.ASSET_DATA.angelina){
+    document.body.innerHTML = "<p style='padding:40px;color:#c0392b'>缺少 assets-data.js（请先运行 build.ps1 生成）。</p>";
+    return;
+  }
+  preloadAssets();
+  buildAssetPanels();
+  bindControls();
+  bindInteractions();
+  render();
+});
+</script>
+</body>
+</html>

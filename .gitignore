@@ -1,0 +1,7 @@
+﻿# 临时/敏感文件
+_token.txt
+_edgeprofile*/
+_dom.txt
+_err.txt
+_*.js
+node_modules/
