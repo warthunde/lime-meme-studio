@@ -684,43 +684,65 @@ function aiPrompt(text){
   if (sel && sel.type === "text") _aiTargetTextId = sel.id;
   else _aiTargetTextId = null;
 
-  var prompt = "请为这段文字生成一个漫画风格的对话气泡 SVG 图片：\n\n"
+  var prompt = "请为下面这段文字生成一个漫画风格的对话气泡 SVG 图片：\n\n"
     + "「" + text + "」\n\n"
     + "风格要求：\n"
     + "- 蓝色(#1368C0)实线边框，白色(#ffffff)填充\n"
     + "- 圆角矩形，底部中央有三角形尾巴(漫画对话框)\n"
     + "- 文字用粗体深色(#0B1F33)，居中\n"
     + "- 气泡有轻微阴影\n"
-    + "- 背景透明";
+    + "- 背景透明\n"
+    + "- 只输出 SVG 代码";
 
   var DOUBAO = "https://www.doubao.com/chat/";
 
-  // 复制提示词到剪贴板
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(prompt).then(function(){});
-    } else {
-      fallbackCopy(prompt);
-    }
-  } catch(e){ fallbackCopy(prompt); }
+  // 步骤1: 复制提示词
+  copyText(prompt);
 
   // 按钮闪烁
   var btn = $("btnAiGen");
   btn.classList.add("flash");
   setTimeout(function(){ btn.classList.remove("flash"); }, 600);
 
-  // 打开豆包 — 如果弹窗被拦截，显示手动链接
+  // 步骤3: 打开豆包
   var w = window.open(DOUBAO, "_blank");
+
+  // 步骤4: 构建引导面板
+  var html = '';
   if (w) {
-    showOverlay("🚀 已打开豆包");
-    $("ovNote").innerHTML = "<b>Ctrl+V</b> 粘贴提示词 → 生成图片 → 右键复制<br>→ 回到本页 <b>Ctrl+V</b> 粘贴<br><br><small style='color:#7C3AED'>提示词已复制到剪贴板 ✓</small>";
-    setTimeout(hideOverlay, 4000);
+    html += '<div style="font-size:40px;margin-bottom:6px">🚀</div>';
+    html += '<div style="font-weight:900;font-size:15px;color:#7C3AED;margin-bottom:12px">豆包已打开</div>';
   } else {
-    // 弹窗被拦截
-    showOverlay("⚠️ 弹窗被拦截了");
-    $("ovNote").innerHTML = "提示词已复制 ✓<br><br>请手动打开：<br><a href='" + DOUBAO + "' target='_blank' style='color:#7C3AED;font-size:14px'>🫘 点此打开豆包</a><br><br>生成后回来 <b>Ctrl+V</b> 粘贴图片";
-    setTimeout(hideOverlay, 8000);
+    html += '<div style="font-size:40px;margin-bottom:6px">⚠️</div>';
+    html += '<div style="font-weight:900;font-size:15px;color:#7C3AED;margin-bottom:8px">弹窗被拦截</div>';
+    html += '<a href="' + DOUBAO + '" target="_blank" style="display:inline-block;padding:10px 28px;background:linear-gradient(135deg,#7C3AED,#A855F7);color:#fff;border-radius:999px;text-decoration:none;font-weight:700;margin-bottom:14px">🫘 点此打开豆包</a><br>';
   }
+  html += '<div style="background:#F8F6FF;border-radius:10px;padding:12px;text-align:left;font-size:12px;line-height:1.8;color:#4A3A6A;margin-bottom:8px">';
+  html += '<b>📋 步骤：</b><br>';
+  html += '1️⃣ 在豆包输入框 <b>Ctrl+V</b> 粘贴提示词<br>';
+  html += '2️⃣ 发送 → 豆包生成 SVG 气泡<br>';
+  html += '3️⃣ 右键复制生成的图片<br>';
+  html += '4️⃣ 回到本页 <b>Ctrl+V</b> 粘贴<br>';
+  html += '</div>';
+  html += '<button onclick="copyText(decodeURIComponent(\'' + 
+    encodeURIComponent(prompt).replace(/'/g, "\\'") + 
+    '\'));toast(\'提示词已重新复制 ✓\');" style="font-size:11px;padding:5px 14px">📋 重新复制提示词</button>';
+
+  showOverlay("");
+  $("ovText").innerHTML = html;
+  $("bar").style.display = "none";
+  $("ovNote").style.display = "none";
+  setTimeout(hideOverlay, 8000);
+}
+
+function copyText(text){
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      fallbackCopy(text);
+    }
+  } catch(e){ fallbackCopy(text); }
 }
 
 function fallbackCopy(text){
