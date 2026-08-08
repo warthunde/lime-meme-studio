@@ -161,6 +161,41 @@
     font-weight: 900; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
     white-space: nowrap; line-height: 1.25; display: block;
   }
+
+  /* ── 9-1 蓝色对话气泡 ── */
+  .ly .bubble {
+    background: #fff;
+    border: 2.5px solid #1368C0;
+    border-radius: 11px;
+    padding: 0.3em 0.55em;
+    position: relative;
+    display: inline-block;
+    box-shadow: 2px 3px 0 rgba(19,104,192,0.13);
+  }
+  /* 气泡尾巴外三角(蓝色) */
+  .ly .bubble::before {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 8px solid #1368C0;
+  }
+  /* 气泡尾巴内三角(白色覆盖) */
+  .ly .bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #fff;
+  }
   #dropHint {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #A9B896; font-size: 15px; pointer-events: none; text-align: center; padding: 20px; line-height: 1.8;
@@ -200,7 +235,7 @@
       <h3>✏️ 标题文字</h3>
       <input type="text" id="textInput" value="直到大地变成一颗酸橙">
       <div class="presets" id="presetRow"></div>
-      <div class="field"><label>文字颜色</label><input type="color" id="txtColor" value="#FFAB3F"><span class="val"></span></div>
+      <div class="field"><label>文字颜色</label><input type="color" id="txtColor" value="#0B1F33"><span class="val"></span></div>
       <div class="field"><label>描边颜色</label><input type="color" id="strokeColor" value="#1368C0"><span class="val"></span></div>
       <div class="field"><label>描边粗细 %</label><input type="range" id="strokeWidth" min="2" max="16" value="7" step="0.5"><span class="val" id="vStrokeWidth"></span></div>
       <div class="field"><label>字号(宽%)</label><input type="range" id="fontSize" min="3" max="22" value="9" step="0.5"><span class="val" id="vFontSize"></span></div>
@@ -328,10 +363,14 @@ function render(){
     el.style.transform = "translate(-50%,-50%) rotate(" + L.rotate + "deg)";
     if (L.type === "text"){
       var fs = L.fontSize * w / 100;
-      el.innerHTML = '<span class="txt">' + esc(L.text) + "</span>";
       el.style.fontSize = fs + "px";
       el.style.color = L.color;
-      el.style.webkitTextStroke = (fs * L.strokeWidth / 100) + "px " + L.strokeColor;
+      if (L.bubble !== false) {
+        el.innerHTML = '<div class="bubble"><span class="txt">' + esc(L.text) + '</span></div>';
+      } else {
+        el.innerHTML = '<span class="txt">' + esc(L.text) + "</span>";
+        el.style.webkitTextStroke = (fs * L.strokeWidth / 100) + "px " + L.strokeColor;
+      }
     } else {
       var iw = L.scale * w;
       el.innerHTML = '<img src="' + L.src + '" style="width:' + iw + "px;display:block;" + '" alt="">';
@@ -420,7 +459,8 @@ function newTextLayer(text){
     text: text, x: 0.5, y: 0.16,
     fontSize: parseFloat($("fontSize").value),
     color: $("txtColor").value, strokeColor: $("strokeColor").value,
-    strokeWidth: parseFloat($("strokeWidth").value), rotate: 0
+    strokeWidth: parseFloat($("strokeWidth").value), rotate: 0,
+    bubble: true
   };
 }
 function newImgLayer(src, kind, name){
@@ -706,11 +746,65 @@ function drawLayer(ctx, L, W, H){
     ctx.font = '900 ' + fs + 'px "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+
+    if (L.bubble !== false) {
+      // 测量文字尺寸
+      var metrics = ctx.measureText(L.text);
+      var textW = metrics.width;
+      var textH = fs * 1.3;
+      var padX = fs * 0.55;
+      var padY = fs * 0.32;
+      var bw = textW + padX * 2;
+      var bh = textH + padY * 2;
+      var radius = Math.max(4, fs * 0.16);
+      var borderW = Math.max(1.5, fs * 0.035);
+      var tailH = Math.max(4, fs * 0.14);
+      var tailW = Math.max(8, fs * 0.18);
+
+      // 画气泡圆角矩形 + 尾巴
+      ctx.beginPath();
+      ctx.moveTo(-bw/2 + radius, -bh/2);
+      ctx.lineTo(bw/2 - radius, -bh/2);
+      ctx.arcTo(bw/2, -bh/2, bw/2, -bh/2 + radius, radius);
+      ctx.lineTo(bw/2, bh/2 - radius);
+      ctx.arcTo(bw/2, bh/2, bw/2 - radius, bh/2, radius);
+      ctx.lineTo(-bw/2 + radius, bh/2);
+      ctx.arcTo(-bw/2, bh/2, -bw/2, bh/2 - radius, radius);
+      ctx.lineTo(-bw/2, -bh/2 + radius);
+      ctx.arcTo(-bw/2, -bh/2, -bw/2 + radius, -bh/2, radius);
+      ctx.closePath();
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.strokeStyle = "#1368C0";
+      ctx.lineWidth = borderW;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      // 画尾巴
+      ctx.beginPath();
+      ctx.moveTo(-tailW/2, bh/2 - borderW/2);
+      ctx.lineTo(tailW/2, bh/2 - borderW/2);
+      ctx.lineTo(0, bh/2 + tailH);
+      ctx.closePath();
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.strokeStyle = "#1368C0";
+      ctx.lineWidth = borderW;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+
+      // 遮盖气泡底部与尾巴之间的边界线
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-tailW/2 - 1, bh/2 - borderW * 2, tailW + 2, borderW * 2.5);
+    }
+
     ctx.lineJoin = "round";
-    ctx.lineWidth = fs * L.strokeWidth / 100;
-    ctx.strokeStyle = L.strokeColor;
+    if (L.bubble === false) {
+      ctx.lineWidth = fs * L.strokeWidth / 100;
+      ctx.strokeStyle = L.strokeColor;
+      ctx.strokeText(L.text, 0, 0);
+    }
     ctx.fillStyle = L.color;
-    ctx.strokeText(L.text, 0, 0);
     ctx.fillText(L.text, 0, 0);
     ctx.restore();
     return;
