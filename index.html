@@ -48,6 +48,73 @@
     background: #FFFDF5; color: #2E3A24; font-size: 16px; font-weight: 800; font-family: inherit; outline: none;
   }
   .panel input[type="text"]:focus { border-color: #FFB800; }
+
+  /* ── 文字面板 · 匹配 9-1 蓝色漫画风格 ── */
+  #textPanel {
+    background: linear-gradient(172deg, #F4F9FF 0%, #EDF5FD 40%, #E0ECF8 100%);
+    border: 2.5px solid #1368C0;
+    border-radius: 18px;
+    box-shadow: 0 4px 18px rgba(19,104,192,0.13), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  #textPanel h3 {
+    color: #1368C0;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+  }
+  #textPanel input[type="text"] {
+    border: 2px solid #B8D4F0;
+    background: #fff;
+    color: #0B3D66;
+    border-radius: 11px;
+    font-weight: 800;
+    padding: 10px 13px;
+  }
+  #textPanel input[type="text"]:focus {
+    border-color: #1368C0;
+    box-shadow: 0 0 0 3px rgba(19,104,192,0.12);
+  }
+  #textPanel .presets button.on {
+    border-color: #1368C0;
+    background: #E0F0FF;
+    color: #1368C0;
+    font-weight: 700;
+  }
+  #textPanel .field {
+    color: #2A5580;
+  }
+  #textPanel .field input[type="color"] {
+    border-color: #C8DDF2;
+  }
+  #textPanel .field input[type="range"] {
+    accent-color: #1368C0;
+  }
+  #textPanel .field .val {
+    color: #1368C0;
+    font-weight: 700;
+  }
+  #textPanel .row button.primary {
+    background: linear-gradient(135deg, #1368C0, #1A7FE0);
+    box-shadow: 0 3px 12px rgba(19,104,192,0.35);
+  }
+  #textPanel .row button.primary:hover {
+    background: linear-gradient(135deg, #1A7FE0, #2190F0);
+    color: #fff;
+  }
+  #textPanel .presets button {
+    border-color: #C8DDF2;
+    color: #3A6A90;
+  }
+  #textPanel .presets button:hover {
+    border-color: #1368C0;
+    color: #1368C0;
+    background: #F0F7FF;
+  }
+  #textPanel .row button {
+    border-color: #C8DDF2;
+  }
   .field { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; color: #5A6C48; }
   .field label { flex: 0 0 auto; width: 92px; }
   .field input[type="color"] { width: 40px; height: 26px; border: 2px solid #EAF0DE; border-radius: 8px; background: none; cursor: pointer; padding: 2px; }
@@ -129,7 +196,7 @@
 </header>
 <main id="main">
   <aside id="side">
-    <section class="panel">
+    <section class="panel" id="textPanel">
       <h3>✏️ 标题文字</h3>
       <input type="text" id="textInput" value="直到大地变成一颗酸橙">
       <div class="presets" id="presetRow"></div>
