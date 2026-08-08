@@ -101,9 +101,9 @@
   #dropHint b { color: #E08A00; }
   #overlay {
     position: fixed; inset: 0; background: rgba(255,248,225,0.82); backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center; z-index: 99;
+    display: none; align-items: center; justify-content: center; z-index: 99;
   }
-  #overlay[hidden] { display: none; }
+  #overlay.show { display: flex; }
   #overlay .box {
     background: #fff; border: 2px solid #FFD24A; border-radius: 18px; padding: 28px 40px;
     text-align: center; box-shadow: 0 10px 40px rgba(120,90,0,0.18); min-width: 300px;
@@ -166,7 +166,7 @@
     </div>
   </section>
 </main>
-<div id="overlay" hidden>
+<div id="overlay">
   <div class="box">
     <div class="em">🍊</div>
     <div id="ovText">处理中…</div>
@@ -206,9 +206,9 @@ function download(url, filename){
   a.click();
   setTimeout(function(){ a.remove(); }, 3000);
 }
-function showOverlay(t){ $("ovText").textContent = t; $("barFill").style.width = "0%"; $("overlay").hidden = false; }
+function showOverlay(t){ $("ovText").textContent = t; $("barFill").style.width = "0%"; $("overlay").classList.add("show"); }
 function setProgress(p){ $("barFill").style.width = Math.min(100, p) + "%"; }
-function hideOverlay(){ $("overlay").hidden = true; }
+function hideOverlay(){ $("overlay").classList.remove("show"); }
 function toast(msg){ var s = $("status"); s.textContent = msg; setTimeout(function(){ if (s.textContent === msg) s.textContent = ""; }, 4500); }
 function esc(s){
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
