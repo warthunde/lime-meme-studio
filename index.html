@@ -196,49 +196,24 @@
     border-right: 4px solid transparent;
     border-top: 5px solid #fff;
   }
-  /* ── AI 风格化 ── */
+  /* ── AI 风格化 · 豆包工作流 ── */
   #btnAiGen {
     background: linear-gradient(135deg, #7C3AED, #A855F7);
     color: #fff; border: none;
     box-shadow: 0 3px 12px rgba(124,58,237,0.35);
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
   }
   #btnAiGen:hover { filter: brightness(1.08); color: #fff; }
-  #btnAiGen.loading { pointer-events: none; opacity: 0.7; }
-  #btnAiGen.loading::after {
-    content: ""; position: absolute; bottom: 0; left: 0; height: 3px;
-    background: rgba(255,255,255,0.6);
-    animation: aiPulse 1.2s ease-in-out infinite;
-    border-radius: 2px;
+  #btnAiGen.flash {
+    animation: aiFlash 0.6s ease-out;
   }
-  @keyframes aiPulse {
-    0% { width: 0%; left: 0%; }
-    50% { width: 60%; left: 20%; }
-    100% { width: 0%; left: 100%; }
+  @keyframes aiFlash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); box-shadow: 0 0 20px rgba(124,58,237,0.6); }
+    100% { transform: scale(1); }
   }
-  #aiSettingsToggle {
-    font-size: 11px; color: #8A9B7A; cursor: pointer; user-select: none;
-    display: inline-block; margin-top: 6px; text-decoration: underline dashed;
-  }
-  #aiSettingsToggle:hover { color: #7C3AED; }
-  #aiSettings {
-    display: none; margin-top: 8px; padding: 10px;
-    background: #FAFBFC; border: 1.5px solid #E8E0F0; border-radius: 10px;
-  }
-  #aiSettings.show { display: block; }
-  #aiSettings label { font-size: 11px; color: #5A4A6A; display: block; margin-top: 6px; }
-  #aiSettings label:first-child { margin-top: 0; }
-  #aiSettings input[type="text"], #aiSettings input[type="password"] {
-    width: 100%; padding: 6px 10px; border-radius: 8px; border: 1.5px solid #E0D8EC;
-    font-size: 12px; font-family: inherit; outline: none; margin-top: 2px;
-    background: #fff; color: #3A2A4A;
-  }
-  #aiSettings input:focus { border-color: #A855F7; }
-  #aiSettings .hint { font-size: 10px; color: #9A8AAA; margin-top: 4px; line-height: 1.4; }
-  #aiStatus { font-size: 11px; min-height: 16px; margin-top: 2px; }
-  #aiStatus.ok { color: #4CAF50; }
-  #aiStatus.err { color: #E53935; }
+  .ai-hint { font-size: 10px; color: #9A8AAA; margin-top: 6px; line-height: 1.5; }
+  .ai-hint b { color: #7C3AED; }
 
   #dropHint {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -287,22 +262,7 @@
         <button id="btnAddText" class="primary">➕ 添加</button>
         <button id="btnAiGen">🤖 AI 风格化</button>
       </div>
-      <span id="aiSettingsToggle">⚙ 设置 API</span>
-      <div id="aiSettings">
-        <label>AI 模型</label>
-        <select id="aiProvider" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #E0D8EC;font-size:12px;font-family:inherit;background:#fff;color:#3A2A4A;margin-top:2px;outline:none">
-          <option value="doubao">🫘 豆包 (火山引擎)</option>
-          <option value="anthropic">🔮 Claude (Anthropic)</option>
-        </select>
-        <label>Model ID</label>
-        <input type="text" id="aiModel" placeholder="doubao-seed-1.5-251015">
-        <label>API Key</label>
-        <input type="password" id="aiApiKey" placeholder="火山引擎: xxxx-xxxx-xxxx / Anthropic: sk-ant-...">
-        <label>代理地址（可选，解决 CORS）</label>
-        <input type="text" id="aiProxy" placeholder="留空直连，或填代理 URL">
-        <div class="hint">按 Enter 或点"AI 风格化"，豆包会把你的文字画成 9-1 蓝色漫画气泡风格</div>
-        <div id="aiStatus"></div>
-      </div>
+      <div class="ai-hint">Enter / <b>AI 风格化</b> → 自动打开豆包，复制提示词<br>豆包生成图片后，右键复制图片 → 回到本页 <b>Ctrl+V</b> 粘贴</div>
     </section>
     <section class="panel">
       <h3>🧡 安洁莉娜(点击添加)</h3>
@@ -712,214 +672,115 @@ function bindInteractions(){
   });
 }
 
-/* ================= AI 风格化 ================= */
-var aiLoading = false;
+/* ================= AI 风格化 · 豆包工作流 ================= */
+var _aiTargetTextId = null;  // 触发 AI 时选中的文字图层，粘贴后替换它
 
-function loadAiConfig(){
-  try {
-    var key = localStorage.getItem("lms_ai_key") || "";
-    var proxy = localStorage.getItem("lms_ai_proxy") || "";
-    var prov = localStorage.getItem("lms_ai_provider") || "doubao";
-    var model = localStorage.getItem("lms_ai_model") || "";
-    $("aiApiKey").value = key;
-    $("aiProxy").value = proxy;
-    $("aiProvider").value = prov;
-    if (!model) {
-      model = prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5";
-    }
-    $("aiModel").value = model;
-    if (key) { $("aiStatus").textContent = "✓ 已配置 " + (prov === "doubao" ? "豆包" : "Claude"); $("aiStatus").className = "ok"; }
-    updateAiPlaceholder();
-  } catch(e){}
-}
-function updateAiPlaceholder(){
-  var prov = $("aiProvider").value;
-  if (prov === "doubao") {
-    $("aiApiKey").placeholder = "火山引擎 API Key: xxxx-xxxx-xxxx-xxxx";
-    $("aiModel").placeholder = "doubao-seed-1.5-251015";
-  } else {
-    $("aiApiKey").placeholder = "Anthropic API Key: sk-ant-...";
-    $("aiModel").placeholder = "claude-sonnet-5";
-  }
-}
-function saveAiConfig(){
-  try {
-    var prov = $("aiProvider").value;
-    localStorage.setItem("lms_ai_key", $("aiApiKey").value.trim());
-    localStorage.setItem("lms_ai_proxy", $("aiProxy").value.trim());
-    localStorage.setItem("lms_ai_provider", prov);
-    localStorage.setItem("lms_ai_model", $("aiModel").value.trim());
-    if (!localStorage.getItem("lms_ai_model")) {
-      localStorage.setItem("lms_ai_model", prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5");
-    }
-    $("aiStatus").textContent = "✓ 已保存";
-    $("aiStatus").className = "ok";
-    setTimeout(function(){ $("aiStatus").textContent = ""; }, 2000);
-  } catch(e){
-    $("aiStatus").textContent = "✗ 保存失败";
-    $("aiStatus").className = "err";
-  }
-}
-
-function svgToImage(svgText, W, H){
-  return new Promise(function(resolve, reject){
-    var blob = new Blob([svgText], {type: "image/svg+xml;charset=utf-8"});
-    var url = URL.createObjectURL(blob);
-    var img = new Image();
-    img.onload = function(){
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = function(e){
-      URL.revokeObjectURL(url);
-      reject(new Error("SVG 解析失败"));
-    };
-    img.src = url;
-  });
-}
-
-function extractSvg(text){
-  // 从 AI 回复中提取 SVG 代码
-  var m = text.match(/<svg[\s\S]*?<\/svg>/i);
-  if (m) return m[0];
-  // 尝试提取 markdown 代码块中的 SVG
-  m = text.match(/```(?:svg|xml|html)?\s*\n?([\s\S]*?)```/i);
-  if (m && m[1].indexOf("<svg") >= 0) return extractSvg(m[1]);
-  return null;
-}
-
-function aiGenerate(text){
-  if (aiLoading) return;
-  var apiKey = $("aiApiKey").value.trim();
-  if (!apiKey) {
-    $("aiSettings").classList.add("show");
-    $("aiApiKey").focus();
-    toast("请先设置 API Key");
-    return;
-  }
+function aiPrompt(text){
+  if (!text) { toast("请先输入文字"); return; }
   if (!state.photo){ toast("请先上传照片"); return; }
 
-  var prov = $("aiProvider").value;
-  var model = $("aiModel").value.trim() || (prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5");
-  var proxy = $("aiProxy").value.trim();
+  // 记录当前选中的文字图层（用于后续替换）
+  var sel = selectedLayer();
+  if (sel && sel.type === "text") _aiTargetTextId = sel.id;
+  else _aiTargetTextId = null;
 
-  aiLoading = true;
-  var btn = $("btnAiGen");
-  btn.textContent = "⏳ 生成中…";
-  btn.classList.add("loading");
-  $("aiStatus").textContent = "生成中…";
-  $("aiStatus").className = "";
-
-  var systemPrompt = "你是一个 SVG 插画师。根据用户输入的文字，生成一个日本漫画风格的对话气泡 SVG。\n"
-    + "严格要求:\n"
+  var prompt = "请为这段文字生成一个漫画风格的对话气泡 SVG 图片：\n\n"
+    + "「" + text + "」\n\n"
+    + "风格要求：\n"
     + "- 蓝色(#1368C0)实线边框，白色(#ffffff)填充\n"
-    + "- 圆角矩形，底部中央有三角形尾巴(像漫画对话框)\n"
+    + "- 圆角矩形，底部中央有三角形尾巴(漫画对话框)\n"
     + "- 文字用粗体深色(#0B1F33)，居中\n"
-    + "- 气泡有轻微阴影，看起来有立体感\n"
-    + "- 只返回 SVG 代码，不要任何解释\n"
-    + "- SVG 要干净简洁，不要多余元素\n"
-    + "- viewBox 根据文字长度自适应\n"
-    + "- 字体用 sans-serif, font-weight: 900";
+    + "- 气泡有轻微阴影\n"
+    + "- 背景透明";
 
-  var userPrompt = "请为这段文字生成漫画对话气泡 SVG:\n" + text;
-
-  var endpoint, reqBody, reqHeaders;
-
-  if (prov === "doubao") {
-    // 火山引擎 豆包 API (OpenAI 兼容)
-    endpoint = proxy || "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
-    reqHeaders = {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey
-    };
-    reqBody = {
-      model: model,
-      max_tokens: 4096,
-      temperature: 0.7,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ]
-    };
-  } else {
-    // Anthropic API
-    endpoint = proxy || "https://api.anthropic.com/v1/messages";
-    if (proxy) endpoint = proxy.replace(/\/+$/, "") + "/v1/messages";
-    reqHeaders = {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    };
-    reqBody = {
-      model: model,
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }]
-    };
+  // 复制提示词到剪贴板
+  var ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(prompt).then(function(){
+        toast("提示词已复制到剪贴板 ✓");
+      }).catch(function(){
+        fallbackCopy(prompt);
+      });
+    } else {
+      fallbackCopy(prompt);
+    }
+    ok = true;
+  } catch(e){
+    fallbackCopy(prompt);
+    ok = true;
   }
 
-  fetch(endpoint, {
-    method: "POST",
-    headers: reqHeaders,
-    body: JSON.stringify(reqBody)
-  }).then(function(r){
-    if (!r.ok) return r.text().then(function(t){ throw new Error(r.status + ": " + t.slice(0,300)); });
-    return r.json();
-  }).then(function(data){
-    var reply = "";
-    if (prov === "doubao") {
-      // 豆包 OpenAI-兼容响应
-      if (data.choices && data.choices.length){
-        var msg = data.choices[0].message;
-        if (msg) reply = msg.content || "";
-      }
-    } else {
-      // Anthropic 响应
-      if (data.content && data.content.length){
-        for (var i = 0; i < data.content.length; i++){
-          if (data.content[i].type === "text") reply += data.content[i].text;
-        }
-      }
-    }
-    var svg = extractSvg(reply);
-    if (!svg) throw new Error("AI 未返回有效 SVG");
+  // 按钮闪烁反馈
+  var btn = $("btnAiGen");
+  btn.classList.add("flash");
+  setTimeout(function(){ btn.classList.remove("flash"); }, 600);
 
-    return svgToImage(svg).then(function(img){
-      var L = {
-        id: layerIdSeq++, type: "img", name: "AI·" + text.slice(0, 12),
-        src: svgToDataUrl(svg), kind: "ai-svg",
-        x: 0.5, y: 0.3, scale: 0.4, rotate: 0
-      };
-      imgCache[L.src] = img;
-      state.layers.push(L);
-      state.selectedId = L.id;
-      render();
-      toast("AI 气泡已添加");
-      $("aiStatus").textContent = "✓ 完成";
-      $("aiStatus").className = "ok";
-    });
-  }).catch(function(err){
-    var msg = err.message || String(err);
-    $("aiStatus").textContent = "✗ " + msg;
-    $("aiStatus").className = "err";
-    if (msg.indexOf("Failed to fetch") >= 0 || msg.indexOf("NetworkError") >= 0){
-      $("aiStatus").textContent = "✗ 网络不通(CORS)，请设置代理地址";
-      toast("CORS 错误：浏览器不允许直连 API，请点击「设置 API」填写代理地址");
-    } else {
-      toast("AI 生成失败: " + msg);
-    }
-    console.error("AI gen error:", err);
-  }).finally(function(){
-    aiLoading = false;
-    var btn = $("btnAiGen");
-    btn.textContent = "🤖 AI 风格化";
-    btn.classList.remove("loading");
-  });
+  // 打开豆包
+  window.open("https://www.doubao.com/chat/", "_blank");
+
+  toast("已打开豆包 → 粘贴提示词 → 生成后右键复制图片 → 回到本页 Ctrl+V");
 }
 
-function svgToDataUrl(svg){
-  return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+function fallbackCopy(text){
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch(e){}
+  document.body.removeChild(ta);
+}
+
+// 监听 Ctrl+V 粘贴图片到画布
+function handleCanvasPaste(ev){
+  // 仅在没有聚焦输入框时处理
+  if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) return;
+  if (!state.photo) return;
+
+  var items = ev.clipboardData && ev.clipboardData.items;
+  if (!items) return;
+
+  for (var i = 0; i < items.length; i++){
+    if (items[i].type.indexOf("image") === 0){
+      ev.preventDefault();
+      var blob = items[i].getAsFile();
+      var reader = new FileReader();
+      reader.onload = function(){
+        var dataURL = reader.result;
+        var img = new Image();
+        img.onload = function(){
+          imgCache[dataURL] = img;
+          var L = {
+            id: layerIdSeq++, type: "img", name: "AI·气泡",
+            src: dataURL, kind: "png",
+            x: 0.5, y: 0.3, scale: 0.35, rotate: 0
+          };
+
+          // 如果有目标文字图层，替换它的位置
+          if (_aiTargetTextId != null){
+            for (var j = 0; j < state.layers.length; j++){
+              if (state.layers[j].id === _aiTargetTextId){
+                L.x = state.layers[j].x;
+                L.y = state.layers[j].y;
+                // 删除原文字图层
+                state.layers = state.layers.filter(function(x){ return x.id !== _aiTargetTextId; });
+                break;
+              }
+            }
+            _aiTargetTextId = null;
+          }
+
+          state.layers.push(L);
+          state.selectedId = L.id;
+          render();
+          toast("AI 气泡已粘贴 ✓");
+        };
+        img.src = dataURL;
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
+  }
 }
 
 /* ================= 控件绑定 ================= */
@@ -946,33 +807,19 @@ function bindControls(){
   $("btnAuto").addEventListener("click", function(){ autoPlace(); render(); toast("已根据照片自动放置标题"); });
   $("btnAddText").addEventListener("click", addTextLayer);
   $("btnAiGen").addEventListener("click", function(){
-    aiGenerate($("textInput").value.trim());
+    aiPrompt($("textInput").value.trim());
   });
 
-  // Enter 键触发 AI 生成
+  // Enter 键触发 AI
   $("textInput").addEventListener("keydown", function(ev){
     if (ev.key === "Enter"){
       ev.preventDefault();
-      aiGenerate($("textInput").value.trim());
+      aiPrompt($("textInput").value.trim());
     }
   });
 
-  // AI 设置面板
-  $("aiSettingsToggle").addEventListener("click", function(){
-    $("aiSettings").classList.toggle("show");
-  });
-  $("aiProvider").addEventListener("change", function(){
-    updateAiPlaceholder();
-    var prov = $("aiProvider").value;
-    $("aiModel").value = prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5";
-    saveAiConfig();
-  });
-  $("aiModel").addEventListener("change", saveAiConfig);
-  $("aiModel").addEventListener("blur", saveAiConfig);
-  $("aiApiKey").addEventListener("change", saveAiConfig);
-  $("aiApiKey").addEventListener("blur", saveAiConfig);
-  $("aiProxy").addEventListener("change", saveAiConfig);
-  $("aiProxy").addEventListener("blur", saveAiConfig);
+  // Ctrl+V 粘贴 AI 生成的图片
+  document.addEventListener("paste", handleCanvasPaste);
 
   $("btnPng").addEventListener("click", exportPNG);
   $("btnGif").addEventListener("click", exportGIF);
@@ -1253,7 +1100,6 @@ window.addEventListener("DOMContentLoaded", function(){
     return;
   }
   preloadAssets();
-  loadAiConfig();
   buildAssetPanels();
   bindControls();
   bindInteractions();
