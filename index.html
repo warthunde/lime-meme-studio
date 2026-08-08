@@ -230,6 +230,7 @@
     text-align: center; box-shadow: 0 10px 40px rgba(120,90,0,0.18); min-width: 300px;
   }
   #overlay .box .em { font-size: 34px; margin-bottom: 10px; }
+  #overlay .box a { color: #7C3AED; text-decoration: underline; }
   #bar { width: 260px; height: 12px; background: #F0F5E6; border-radius: 8px; overflow: hidden; margin: 14px auto 6px; }
   #bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, #FFD24A, #7DDF64); border-radius: 8px; transition: width 0.15s; }
   #ovNote { font-size: 11px; color: #A9B896; margin-top: 4px; }
@@ -677,7 +678,6 @@ var _aiTargetTextId = null;  // 触发 AI 时选中的文字图层，粘贴后�
 
 function aiPrompt(text){
   if (!text) { toast("请先输入文字"); return; }
-  if (!state.photo){ toast("请先上传照片"); return; }
 
   // 记录当前选中的文字图层（用于后续替换）
   var sel = selectedLayer();
@@ -693,33 +693,34 @@ function aiPrompt(text){
     + "- 气泡有轻微阴影\n"
     + "- 背景透明";
 
+  var DOUBAO = "https://www.doubao.com/chat/";
+
   // 复制提示词到剪贴板
-  var ok = false;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(prompt).then(function(){
-        toast("提示词已复制到剪贴板 ✓");
-      }).catch(function(){
-        fallbackCopy(prompt);
-      });
+      navigator.clipboard.writeText(prompt).then(function(){});
     } else {
       fallbackCopy(prompt);
     }
-    ok = true;
-  } catch(e){
-    fallbackCopy(prompt);
-    ok = true;
-  }
+  } catch(e){ fallbackCopy(prompt); }
 
-  // 按钮闪烁反馈
+  // 按钮闪烁
   var btn = $("btnAiGen");
   btn.classList.add("flash");
   setTimeout(function(){ btn.classList.remove("flash"); }, 600);
 
-  // 打开豆包
-  window.open("https://www.doubao.com/chat/", "_blank");
-
-  toast("已打开豆包 → 粘贴提示词 → 生成后右键复制图片 → 回到本页 Ctrl+V");
+  // 打开豆包 — 如果弹窗被拦截，显示手动链接
+  var w = window.open(DOUBAO, "_blank");
+  if (w) {
+    showOverlay("🚀 已打开豆包");
+    $("ovNote").innerHTML = "<b>Ctrl+V</b> 粘贴提示词 → 生成图片 → 右键复制<br>→ 回到本页 <b>Ctrl+V</b> 粘贴<br><br><small style='color:#7C3AED'>提示词已复制到剪贴板 ✓</small>";
+    setTimeout(hideOverlay, 4000);
+  } else {
+    // 弹窗被拦截
+    showOverlay("⚠️ 弹窗被拦截了");
+    $("ovNote").innerHTML = "提示词已复制 ✓<br><br>请手动打开：<br><a href='" + DOUBAO + "' target='_blank' style='color:#7C3AED;font-size:14px'>🫘 点此打开豆包</a><br><br>生成后回来 <b>Ctrl+V</b> 粘贴图片";
+    setTimeout(hideOverlay, 8000);
+  }
 }
 
 function fallbackCopy(text){
