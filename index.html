@@ -103,6 +103,7 @@
     position: fixed; inset: 0; background: rgba(255,248,225,0.82); backdrop-filter: blur(4px);
     display: flex; align-items: center; justify-content: center; z-index: 99;
   }
+  #overlay[hidden] { display: none; }
   #overlay .box {
     background: #fff; border: 2px solid #FFD24A; border-radius: 18px; padding: 28px 40px;
     text-align: center; box-shadow: 0 10px 40px rgba(120,90,0,0.18); min-width: 300px;
@@ -733,8 +734,8 @@ function exportGIF(){
     c.width = EW; c.height = EH;
     var ctx = c.getContext("2d");
     showOverlay("正在合成动图(共 " + N + " 帧)…");
-    // 主线程编码(workers:0):完全不依赖 Web Worker,file:// 与本地服务器都可靠
-    var gif = new GIF({ workers: 0, quality: 8, width: EW, height: EH, workerScript: "" });
+    // 用 data: URL 形式的 worker(已内嵌在 assets-data.js):不依赖 file:// 权限与网络,最可靠
+    var gif = new GIF({ workers: 2, quality: 10, width: EW, height: EH, workerScript: window.ASSET_DATA.worker });
     gif.on("progress", function(pct){ setProgress(8 + pct * 88); });
     gif.on("error", function(e){
       finished = true;
@@ -771,9 +772,9 @@ function exportGIF(){
     setTimeout(function(){
       if (!finished){
         hideOverlay();
-        toast("导出超时(超过 60 秒)，请尝试更小的照片或减少图层");
+        toast("导出超时(超过 45 秒)，请尝试更小的照片，或确认使用 Chrome/Edge 浏览器");
       }
-    }, 60000);
+    }, 45000);
   }).catch(function(err){
     hideOverlay();
     toast("导出失败: " + err.message);
