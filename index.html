@@ -289,11 +289,18 @@
       </div>
       <span id="aiSettingsToggle">⚙ 设置 API</span>
       <div id="aiSettings">
-        <label>Anthropic API Key</label>
-        <input type="password" id="aiApiKey" placeholder="sk-ant-...">
+        <label>AI 模型</label>
+        <select id="aiProvider" style="width:100%;padding:6px 10px;border-radius:8px;border:1.5px solid #E0D8EC;font-size:12px;font-family:inherit;background:#fff;color:#3A2A4A;margin-top:2px;outline:none">
+          <option value="doubao">🫘 豆包 (火山引擎)</option>
+          <option value="anthropic">🔮 Claude (Anthropic)</option>
+        </select>
+        <label>Model ID</label>
+        <input type="text" id="aiModel" placeholder="doubao-seed-1.5-251015">
+        <label>API Key</label>
+        <input type="password" id="aiApiKey" placeholder="火山引擎: xxxx-xxxx-xxxx / Anthropic: sk-ant-...">
         <label>代理地址（可选，解决 CORS）</label>
-        <input type="text" id="aiProxy" placeholder="留空直连，或填 https://your-proxy.com/v1">
-        <div class="hint">按 Enter 或点"AI 风格化"即可让 AI 把你的文字画成 9-1 蓝色漫画气泡风格</div>
+        <input type="text" id="aiProxy" placeholder="留空直连，或填代理 URL">
+        <div class="hint">按 Enter 或点"AI 风格化"，豆包会把你的文字画成 9-1 蓝色漫画气泡风格</div>
         <div id="aiStatus"></div>
       </div>
     </section>
@@ -712,16 +719,39 @@ function loadAiConfig(){
   try {
     var key = localStorage.getItem("lms_ai_key") || "";
     var proxy = localStorage.getItem("lms_ai_proxy") || "";
+    var prov = localStorage.getItem("lms_ai_provider") || "doubao";
+    var model = localStorage.getItem("lms_ai_model") || "";
     $("aiApiKey").value = key;
     $("aiProxy").value = proxy;
-    if (key) $("aiStatus").textContent = "✓ API Key 已保存";
-    if (key) $("aiStatus").className = "ok";
+    $("aiProvider").value = prov;
+    if (!model) {
+      model = prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5";
+    }
+    $("aiModel").value = model;
+    if (key) { $("aiStatus").textContent = "✓ 已配置 " + (prov === "doubao" ? "豆包" : "Claude"); $("aiStatus").className = "ok"; }
+    updateAiPlaceholder();
   } catch(e){}
+}
+function updateAiPlaceholder(){
+  var prov = $("aiProvider").value;
+  if (prov === "doubao") {
+    $("aiApiKey").placeholder = "火山引擎 API Key: xxxx-xxxx-xxxx-xxxx";
+    $("aiModel").placeholder = "doubao-seed-1.5-251015";
+  } else {
+    $("aiApiKey").placeholder = "Anthropic API Key: sk-ant-...";
+    $("aiModel").placeholder = "claude-sonnet-5";
+  }
 }
 function saveAiConfig(){
   try {
+    var prov = $("aiProvider").value;
     localStorage.setItem("lms_ai_key", $("aiApiKey").value.trim());
     localStorage.setItem("lms_ai_proxy", $("aiProxy").value.trim());
+    localStorage.setItem("lms_ai_provider", prov);
+    localStorage.setItem("lms_ai_model", $("aiModel").value.trim());
+    if (!localStorage.getItem("lms_ai_model")) {
+      localStorage.setItem("lms_ai_model", prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5");
+    }
     $("aiStatus").textContent = "✓ 已保存";
     $("aiStatus").className = "ok";
     setTimeout(function(){ $("aiStatus").textContent = ""; }, 2000);
@@ -764,10 +794,14 @@ function aiGenerate(text){
   if (!apiKey) {
     $("aiSettings").classList.add("show");
     $("aiApiKey").focus();
-    toast("请先设置 Anthropic API Key");
+    toast("请先设置 API Key");
     return;
   }
   if (!state.photo){ toast("请先上传照片"); return; }
+
+  var prov = $("aiProvider").value;
+  var model = $("aiModel").value.trim() || (prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5");
+  var proxy = $("aiProxy").value.trim();
 
   aiLoading = true;
   var btn = $("btnAiGen");
@@ -789,39 +823,67 @@ function aiGenerate(text){
 
   var userPrompt = "请为这段文字生成漫画对话气泡 SVG:\n" + text;
 
-  var baseUrl = $("aiProxy").value.trim() || "https://api.anthropic.com";
-  var endpoint = baseUrl.replace(/\/+$/, "") + "/v1/messages";
+  var endpoint, reqBody, reqHeaders;
 
-  fetch(endpoint, {
-    method: "POST",
-    headers: {
+  if (prov === "doubao") {
+    // 火山引擎 豆包 API (OpenAI 兼容)
+    endpoint = proxy || "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+    reqHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey
+    };
+    reqBody = {
+      model: model,
+      max_tokens: 4096,
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ]
+    };
+  } else {
+    // Anthropic API
+    endpoint = proxy || "https://api.anthropic.com/v1/messages";
+    if (proxy) endpoint = proxy.replace(/\/+$/, "") + "/v1/messages";
+    reqHeaders = {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
+    };
+    reqBody = {
+      model: model,
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }]
-    })
+    };
+  }
+
+  fetch(endpoint, {
+    method: "POST",
+    headers: reqHeaders,
+    body: JSON.stringify(reqBody)
   }).then(function(r){
     if (!r.ok) return r.text().then(function(t){ throw new Error(r.status + ": " + t.slice(0,300)); });
     return r.json();
   }).then(function(data){
     var reply = "";
-    if (data.content && data.content.length){
-      for (var i = 0; i < data.content.length; i++){
-        if (data.content[i].type === "text") reply += data.content[i].text;
+    if (prov === "doubao") {
+      // 豆包 OpenAI-兼容响应
+      if (data.choices && data.choices.length){
+        var msg = data.choices[0].message;
+        if (msg) reply = msg.content || "";
+      }
+    } else {
+      // Anthropic 响应
+      if (data.content && data.content.length){
+        for (var i = 0; i < data.content.length; i++){
+          if (data.content[i].type === "text") reply += data.content[i].text;
+        }
       }
     }
     var svg = extractSvg(reply);
     if (!svg) throw new Error("AI 未返回有效 SVG");
-
-    // 获取 SVG 原始尺寸
-    var vbMatch = svg.match(/viewBox=["']([^"']+)["']/);
-    var vb = vbMatch ? vbMatch[1].split(/\s+/) : null;
 
     return svgToImage(svg).then(function(img){
       var L = {
@@ -829,7 +891,6 @@ function aiGenerate(text){
         src: svgToDataUrl(svg), kind: "ai-svg",
         x: 0.5, y: 0.3, scale: 0.4, rotate: 0
       };
-      // 缓存图片以便 canvas 导出
       imgCache[L.src] = img;
       state.layers.push(L);
       state.selectedId = L.id;
@@ -900,6 +961,14 @@ function bindControls(){
   $("aiSettingsToggle").addEventListener("click", function(){
     $("aiSettings").classList.toggle("show");
   });
+  $("aiProvider").addEventListener("change", function(){
+    updateAiPlaceholder();
+    var prov = $("aiProvider").value;
+    $("aiModel").value = prov === "doubao" ? "doubao-seed-1.5-251015" : "claude-sonnet-5";
+    saveAiConfig();
+  });
+  $("aiModel").addEventListener("change", saveAiConfig);
+  $("aiModel").addEventListener("blur", saveAiConfig);
   $("aiApiKey").addEventListener("change", saveAiConfig);
   $("aiApiKey").addEventListener("blur", saveAiConfig);
   $("aiProxy").addEventListener("change", saveAiConfig);
